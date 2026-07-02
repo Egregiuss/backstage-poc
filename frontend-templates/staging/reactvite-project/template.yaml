@@ -58,7 +58,7 @@ spec:
       name: Fetch Base Template
       action: fetch:template
       input:
-        url: https://your-gitlab/skeleton-projects/react-boilerplate
+        url: https://github.com/Olumuyiwa/reactvite-project-skeleton
         ref: main
         values:
           projectName: ${{ parameters.projectName }}
