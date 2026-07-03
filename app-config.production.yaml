@@ -28,9 +28,20 @@ backend:
       #   ca: # if you have a CA file and want to verify it you can uncomment this section
       #     $file: <file-path>/ca/server.crt
 
-auth:
-  providers:
-    guest: {}
+# auth:
+#   environment: production
+#   # see https://backstage.io/docs/auth/ to learn about auth providers
+#   providers:
+#     # See https://backstage.io/docs/auth/guest/provider
+#     guest: 
+#       dangerouslyAllowOutsideDevelopment: true
+#       userEntityRef: user:default/backstage-guest
+#       ownershipEntityRefs: [group:default/guest-family]
+#     github:
+#       production:
+#         clientId: ${GITHUB_OAUTH_CLIENT_ID}
+#         clientSecret: ${GITHUB_OAUTH_CLIENT_SECRET}
+#         audience: ${GITHUB_OAUTH_LOGIN_BASE_URL}
 
 catalog:
 

@@ -1,14 +1,13 @@
 /*
- * Hi!
- *
- * Note that this is an EXAMPLE Backstage backend. Please check the README.
- *
- * Happy hacking!
+ * index.ts file is the entry point for the Backstage backend application. It is responsible for creating and configuring the backend with the necessary plugins and modules.
  */
 
 import { createBackend } from '@backstage/backend-defaults';
 
 const backend = createBackend();
+
+backend.add(import('@backstage/plugin-auth-backend'));
+backend.add(import('@backstage/plugin-auth-backend-module-github-provider'));
 
 backend.add(import('@backstage/plugin-app-backend'));
 backend.add(import('@backstage/plugin-proxy-backend'));
@@ -24,7 +23,6 @@ backend.add(
 backend.add(import('@backstage/plugin-techdocs-backend'));
 
 // auth plugin
-backend.add(import('@backstage/plugin-auth-backend'));
 // See https://backstage.io/docs/backend-system/building-backends/migrating#the-auth-plugin
 backend.add(import('@backstage/plugin-auth-backend-module-guest-provider'));
 // See https://backstage.io/docs/auth/guest/provider
