@@ -88,9 +88,9 @@ auth:
       ownershipEntityRefs: [group:default/guest-family]
     github:
       development:
-        clientId: ${GITHUB_OAUTH_CLIENT_ID}
-        clientSecret: ${GITHUB_OAUTH_CLIENT_SECRET}
-        audience: ${GITHUB_OAUTH_LOGIN_BASE_URL}
+        clientId: ${GIHUB_OAUTH_CLIENT_ID}
+        clientSecret: ${GIHUB_OAUTH_CLIENT_SECRET}
+        audience: ${GIHUB_OAUTH_LOGIN_BASE_URL}
         signIn:
           resolvers:
             - resolver: usernameMatchingUserEntityName
