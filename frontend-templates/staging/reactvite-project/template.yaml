@@ -1,0 +1,77 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: reactvite-project
+  title: GitHub // New React Vite Project
+  description: Create a new React Vite project in GitHub
+  tags:
+    - react
+    - frontend
+    - github
+spec:
+  owner: poc
+  type: website
+
+  parameters:
+      - title: React App Configuration
+        required:
+          - projectName
+          - githubUsername
+          - description
+        properties:
+          projectName:
+            title: Project Name
+            description: The name of the project to create in GitHub and locally.
+            type: string
+        framework:
+          type: string
+          enum: [vite, nextjs]
+        language:
+          type: string
+          enum: [typescript, javascript]
+        packageManager:
+          type: string
+          enum: [npm, pnpm]
+          githubUsername:
+            title: GitHub Username
+            description: The username of the GitHub user to create the project for.
+            type: string
+        includeDocker:
+          type: boolean
+          default: true
+        includeCI:
+          type: boolean
+          default: true
+          description:
+            title: Project Description
+            description: A brief description of the project.
+            type: string
+
+  steps:
+    # - id: fetch
+    #   name: Fetch Base Template
+    #   action: fetch:template
+    #   input:
+    #     url: ./template
+
+    - id: fetch
+      name: Fetch Base Template
+      action: fetch:template
+      input:
+        url: https://github.com/Olumuyiwa/reactvite-project-skeleton
+        ref: main
+        values:
+          projectName: ${{ parameters.projectName }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.githubUsername }}
+          framework: ${{ parameters.framework }}
+          language: ${{ parameters.language }}
+          packageManager: ${{ parameters.packageManager }}
+          includeDocker: ${{ parameters.includeDocker }}
+          includeCI: ${{ parameters.includeCI }}
+
+    - id: publish
+      action: publish:gitlab
+      input:
+        repoUrl: ${{ parameters.gitlabGroupUrl + "?repo=" + parameters.projectName }}
+        defaultBranch: main

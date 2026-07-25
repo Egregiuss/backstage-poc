@@ -8,7 +8,13 @@ on:
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
+
+# Cancel old builds when a newer commit arrives
+concurrency:
+  group: backstage-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   NODE_VERSION: '24'
@@ -18,19 +24,22 @@ env:
   IMAGE_NAME: backstage
 
 jobs:
+  # -------------------------
+  # CI VALIDATION
+  # -------------------------
   test:
-    name: Test and build
+    name: Test application
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
@@ -41,56 +50,68 @@ jobs:
       - name: Type check
         run: yarn tsc
 
-      # - name: Lint
-      #   run: yarn lint:all
+      - name: ESLint security checks
+        run: yarn lint:all
 
-      - name: Test
+      - name: Run tests
         run: yarn test --watch=false
 
-      - name: Build all packages
-        run: yarn build:all
-
+  # -------------------------
+  # SECURITY VALIDATION
+  # -------------------------
   security-scan:
     name: Security scan
     runs-on: ubuntu-latest
     needs: test
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-      - run: yarn install --immutable
-      - name: Audit dependencies
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Dependency audit
         run: yarn npm audit --severity high
-      - name: Run Trivy filesystem scan
+
+      - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: '0'
-      - name: Run ESLint security checks
-        run: yarn lint:all
 
+  # -------------------------
+  # PRODUCTION DEPLOYMENT
+  # -------------------------
   deploy:
     name: Build image and deploy
     runs-on: ubuntu-latest
-    needs: [test, security-scan]
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs:
+      [test, security-scan]
+      # Only deploy main branch or manual trigger
+    if: github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
 
     permissions:
       contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
@@ -98,11 +119,12 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Type check
-        run: yarn tsc
-
       - name: Build all packages
         run: yarn build:all
+
+      # -------------------------
+      # GOOGLE CLOUD AUTH
+      # -------------------------
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -115,6 +137,10 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker "${GAR_LOCATION}-docker.pkg.dev" --quiet
 
+      # -------------------------
+      # ARTIFACT REGISTRY
+      # -------------------------
+
       - name: Ensure Artifact Registry repository exists
         run: |
           gcloud artifacts repositories describe "${GAR_REPOSITORY}" \
@@ -123,6 +149,10 @@ jobs:
             --repository-format=docker \
             --location="${GAR_LOCATION}" \
             --description="Backstage Docker images"
+
+      # -------------------------
+      # DOCKER BUILD
+      # -------------------------
 
       - name: Build Docker image
         run: |
@@ -136,13 +166,21 @@ jobs:
           docker push "${GAR_LOCATION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${GAR_REPOSITORY}/${IMAGE_NAME}:${{ github.sha }}"
           docker push "${GAR_LOCATION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${GAR_REPOSITORY}/${IMAGE_NAME}:latest"
 
+      # -------------------------
+      # CONTAINER SECURITY
+      # -------------------------
+
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
-          image-ref: "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          image-ref: '${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
           severity: HIGH,CRITICAL
           exit-code: '0'
+
+      # -------------------------
+      # CLOUD RUN DEPLOY
+      # -------------------------
 
       - name: Deploy to Cloud Run
         run: |

@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: users
+  description: All users
+spec:
+  targets:
+    - ./users/olumuyiwa.yaml

@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: olumuyiwa
+spec:
+  profile:
+    displayName: Olumuyiwa Folorunso
+    email: olumuyiwa.folorunso@gmail.com
+  memberOf:
+    - guests
+
