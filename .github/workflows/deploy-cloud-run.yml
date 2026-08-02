@@ -5,11 +5,8 @@ on:
     branches:
       - main
       - feature/security-scan
-<<<<<<< Updated upstream
-=======
       - upgrade/*
       - feature/*
->>>>>>> Stashed changes
   pull_request:
     branches:
       - main
