@@ -35,10 +35,14 @@ jobs:
       dockerfile: packages/backend/Dockerfile
       cloud-run-port: 7007
       cloud-sql-instances: project-backstage:europe-west2:backstage-postgres
-      cloud-run-env-vars: "NODE_ENV=production,BACKSTAGE_BASE_URL=${{ secrets.BACKSTAGE_BASE_URL }},POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},POSTGRES_PORT=${{ secrets.POSTGRES_PORT }},POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+      cloud-run-env-vars: NODE_ENV=production
     secrets:
       GCP_REGION: ${{ secrets.GCP_REGION }}
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       CLOUD_RUN_SERVICE: ${{ secrets.CLOUD_RUN_SERVICE }}
       POSTGRES_PASSWORD_SECRET_NAME: ${{ secrets.POSTGRES_PASSWORD_SECRET_NAME }}
+      BACKSTAGE_BASE_URL: ${{ secrets.BACKSTAGE_BASE_URL }}
+      POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
