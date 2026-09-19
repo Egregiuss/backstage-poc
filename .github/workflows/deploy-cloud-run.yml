@@ -27,6 +27,9 @@ jobs:
   deploy:
     needs: [ci, security-scan]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
     uses: Egregiuss/central_pipelines/.github/workflows/node-deploy-gke.yml@main
     with:
       node-version: '24'
