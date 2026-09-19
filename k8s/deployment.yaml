@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      containers:
+        - name: backstage
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 7007
+          env:
+            - name: APP_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: APP_BASE_URL
+            - name: BACKEND_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BACKEND_BASE_URL
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GITHUB_TOKEN
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
