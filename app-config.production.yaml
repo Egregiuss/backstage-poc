@@ -1,8 +1,8 @@
 app:
-  baseUrl: ${APP_BASE_URL}
+  baseUrl: http://34.89.114.207
 
 backend:
-  baseUrl: ${BACKEND_BASE_URL}
+  baseUrl: http://34.89.114.207
   listen:
     port: 7007
     host: 0.0.0.0
