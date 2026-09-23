@@ -8,6 +8,10 @@ backend:
     host: 0.0.0.0
   csp:
     upgrade-insecure-requests: false
+  cors:
+    origin: http://34.89.114.207
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
   database:
     client: pg
     connection:
