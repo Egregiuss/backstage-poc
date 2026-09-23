@@ -9,7 +9,7 @@ metadata:
     kubernetes.io/ingress.class: gce
 spec:
   rules:
-    - host: 8-232-102-229.sslip.io
+    - host: 34-160-54-180.sslip.io
       http:
         paths:
           - path: /
@@ -27,4 +27,4 @@ metadata:
   namespace: backstage
 spec:
   domains:
-    - 8-232-102-229.sslip.io
+    - 34-160-54-180.sslip.io
