@@ -8,11 +8,6 @@ backend:
     host: 0.0.0.0
   csp:
     upgrade-insecure-requests: false
-  helmet:
-    strictTransportSecurity: false
-    contentSecurityPolicy:
-      directives:
-        upgrade-insecure-requests: false
   database:
     client: pg
     connection:
