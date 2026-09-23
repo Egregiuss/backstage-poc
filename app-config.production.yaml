@@ -17,7 +17,7 @@ backend:
       password: ${POSTGRES_PASSWORD}
 
 auth:
-  environment: production
+  environment: development
   providers:
     guest:
       dangerouslyAllowOutsideDevelopment: true
