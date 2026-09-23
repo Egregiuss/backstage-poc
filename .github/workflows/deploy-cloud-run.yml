@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
 
 jobs:
@@ -24,6 +25,9 @@ jobs:
       language: node
       node-version: '24'
 
+  # -------------------------
+  # PRODUCTION DEPLOYMENT
+  # -------------------------
   deploy:
     needs: [ci, security-scan]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
