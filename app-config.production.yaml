@@ -1,15 +1,20 @@
 app:
-  baseUrl: http://34.89.114.207
+  baseUrl: https://34-89-114-207.sslip.io
 
 backend:
-  baseUrl: http://34.89.114.207
+  baseUrl: https://34-89-114-207.sslip.io
   listen:
     port: 7007
     host: 0.0.0.0
   csp:
     upgrade-insecure-requests: false
+  helmet:
+    strictTransportSecurity: false
+    contentSecurityPolicy:
+      directives:
+        upgrade-insecure-requests: false
   cors:
-    origin: http://34.89.114.207
+    origin: https://34-89-114-207.sslip.io
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
   database:
