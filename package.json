@@ -36,8 +36,8 @@
     "plugins/*"
   ],
   "devDependencies": {
-    "@backstage/cli": "^0.36.2",
-    "@backstage/cli-defaults": "^0.1.2",
+    "@backstage/cli": "^0.36.5",
+    "@backstage/cli-defaults": "^0.1.5",
     "@backstage/e2e-test-utils": "^0.1.2",
     "@jest/environment-jsdom-abstract": "~30.2.0",
     "@playwright/test": "^1.32.3",
@@ -70,9 +70,9 @@
   },
   "packageManager": "yarn@4.4.1",
   "dependencies": {
-    "@backstage/core-app-api": "^1.20.2",
-    "@backstage/core-components": "^0.18.11",
-    "@backstage/plugin-auth-backend": "^0.29.1",
-    "@backstage/plugin-auth-backend-module-github-provider": "^0.5.4"
+    "@backstage/core-app-api": "^1.20.4",
+    "@backstage/core-components": "^0.18.13",
+    "@backstage/plugin-auth-backend": "^0.30.0",
+    "@backstage/plugin-auth-backend-module-github-provider": "^0.5.6"
   }
 }

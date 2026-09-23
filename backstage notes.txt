@@ -1,0 +1,828 @@
+ 
+Deploying Backstage to Kubernetes on 
+GCP 
+A Real-World Step-by-Step Guide 
+Including Real Errors, Real Fixes, and Real Explanations 
+Date: April 2026 
+ 
+  
+1. Overview 2 
+2. Prerequisites 4 
+2.1 Accounts and Access 4 
+2.2 Tools 4 
+2.3 Your GCP Project Details 4 
+3. Phase 1 — Project Setup 5 
+3.1 Objective 5 
+3.2 Commands 5 
+3.3 Expected Output from the Code ran 5 
+3.4 Validate the response of the code ran 6 
+4. Phase 2 — Enable Required APIs 6 
+4.1 Objective 6 
+4.2 Command 6 
+5. Phase 3 — Create Kubernetes Cluster 6 
+5.1 Objective 6 
+5.2 Command 7 
+5.3 Validate 7 
+5.4 Errors Encountered and Fixes 7 
+6. Phase 4 — Kubernetes Configuration Files 8 
+6.1 Objective 8 
+6.2 File Structure 8 
+6.3 namespace.yaml 8 
+6.4 deployment.yaml 9 
+6.5 service.yaml 9 
+6.6 Errors Encountered and Fixes 10 
+7. Phase 5 — Artifact Registry 10 
+7.1 Objective 10 
+7.2 Create the Repository 10 
+7.3 Give the Cluster Permission to Pull Images 11 
+7.4 Errors Encountered and Fixes 11 
+8. Phase 6 — Workload Identity Federation 11 
+8.1 Objective 11 
+8.2 Why Not Just Use a JSON Key? 11 
+8.3 Step 1 — Create Service Account 12 
+8.4 Step 2 — Grant Permissions 12 
+8.5 Step 3 — Create Workload Identity Pool 12 
+8.6 Step 4 — Create GitHub OIDC Provider 12 
+8.7 Step 5 — Bind GitHub Repo to Service Account 13 
+8.8 Step 6 — Add GitHub Secrets 13 
+9. Phase 7 — CI/CD Pipeline 14 
+9.1 Objective 14 
+9.2 File Location 14 
+9.3 Full Pipeline YAML 14 
+9.4 Errors Encountered and Fixes 17 
+10. Phase 8 — Deploy and Verify 18 
+10.1 Trigger the Pipeline 18 
+10.2 Reconnect Cloud Shell to Cluster 18 
+10.3 Verify the App is Running 18 
+10.4 Errors Encountered and Fixes 19 
+11. Final App Configuration 20 
+11.1 app-config.yaml 20 
+11.2 app-config.production.yaml 21 
+12. Managing the Deployment 22 
+12.1 How to Come Back After a Break 22 
+12.2 How to Restart the App 22 
+12.3 How to Check Logs 22 
+12.4 Shutdown Options 22 
+13. Troubleshooting Guide 23 
+14. Final Summary 24 
+14.1 What You Built 24 
+14.2 The Full Memory Hook 24 
+14.3 Key Principles Learned 24 
+ 
+1. Overview 
+This document describes the full process of deploying a Backstage developer portal application to Google 
+Kubernetes Engine (GKE) using a fully automated CI/CD pipeline powered by GitHub Actions. 
+  
+This is not a theoretical guide. Every step in this document was actually carried out, every error was actually 
+encountered, and every fix was actually tested. That is what makes this guide different from most 
+documentation you will find online. 
+  
+1.1 What We Built 
+A pipeline that automatically deploys a Backstage application to Kubernetes every time code is pushed to the 
+k8s branch on GitHub. The full flow is: 
+  
+Git Push (k8s branch) 
+   | 
+   v 
+GitHub Actions runs (build + test + compile) 
+   | 
+   v 
+Docker image built from source code 
+   | 
+   v 
+Image pushed to Google Artifact Registry 
+   | 
+   v 
+Kubernetes cluster updated with new image 
+   | 
+   v 
+App live at public IP via LoadBalancer 
+  
+1.2 Memory Hook 
+Remember the full journey with this: G → D → R → K → B 
+•       G = GitHub (your code lives here) 
+•       D = Docker (your app gets packaged into an image) 
+•       R = Registry (Artifact Registry stores the image) 
+•       K = Kubernetes (GKE runs the image) 
+•       B = Browser (you access the live app here) 
+  
+1.3 Key Technologies 
+Technology What It Does 
+GCP (Google Cloud Platform) Cloud provider hosting the infrastructure 
+GKE (Google Kubernetes Engine) Managed Kubernetes cluster service 
+Artifact Registry Stores Docker images (like a warehouse) 
+Kubernetes (K8s) Orchestrates and manages containers 
+GitHub Actions Automates the CI/CD pipeline on every push 
+Workload Identity Federation Secure auth between GitHub and GCP — no keys 
+needed 
+Docker Packages the app into a portable container image 
+Backstage The developer portal application being deployed 
+  
+2. Prerequisites 
+Before starting, make sure you have all of the following ready. Skipping any of these will cause failures later. 
+2.1 Accounts and Access 
+• A Google Cloud Platform account (console.cloud.google.com) 
+• A GCP project already created with billing enabled 
+• A GitHub account 
+• A GitHub repository containing your Backstage application 
+2.2 Tools 
+• A code editor (VS Code recommended) 
+• Git installed on your local machine 
+• Access to GCP Cloud Shell (browser-based — no installation needed) 
+Important — Windows Users 
+Do not use your Windows terminal for GCP commands. All gcloud and kubectl commands in this guide 
+are run in GCP Cloud Shell, which is a terminal that runs inside your browser at 
+console.cloud.google.com. Look for the >_ icon in the top right corner of the GCP console to open it. 
+2.3 Your GCP Project Details 
+You will need three values from your GCP project. Find them at console.cloud.google.com by clicking the 
+project dropdown in the top left. 
+Variable 
+Description 
+PROJECT_ID 
+The unique identifier, e.g. 
+project-9b8c91d6-b01a-4731-a77 
+PROJECT_NUMBER 
+The internal numeric ID, e.g. 233354415663 
+PROJECT_NAME 
+The display name, e.g. My First Project 
+3. Phase 1 — Project Setup 
+3.1 Objective 
+Tell GCP which project all your commands should apply to. Without this, commands either fail or run against 
+the wrong project. 
+  
+ 
+ 
+ 
+ 
+3.2 Commands 
+Run these in GCP Cloud Shell, replacing the placeholder values with your real project details: 
+ 
+PROJECT_ID="your-gcp-project-id" 
+PROJECT_NUMBER="your-gcp-project-number" 
+PROJECT_NAME="your-gcp-project-name" 
+REGION=[the-region-where-your-cluster-is-created-in-i-recommend-europe-west2-if-close-to-europe] 
+E.g 
+REGION=europe-west2  
+  
+echo $PROJECT_ID 
+echo $PROJECT_NUMBER 
+echo $REGION 
+ 
+ gcloud config set project $PROJECT_ID 
+ 
+ OR 
+You may just run these on the terminal  
+ 
+ 
+#!/bin/bash 
+ 
+# ===== GCP ===== 
+export PROJECT_ID=$(gcloud config get-value project) 
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)") 
+ 
+export REGION="europe-west2" 
+export region=$REGION 
+ 
+# ===== SERVICE ACCOUNT ===== 
+export SERVICE_ACCOUNT="github-deployer" 
+export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" 
+export POOL_ID="github-pool" 
+ 
+# ===== GITHUB ===== 
+ 
+export YOUR_GITHUB_USER="Olumuyiwa" 
+export YOUR_REPO="backstage-crashable" 
+ 
+# ===== DEBUG ===== 
+echo "PROJECT_ID=$PROJECT_ID" 
+echo "PROJECT_NUMBER=$PROJECT_NUMBER" 
+echo "REGION=$REGION" 
+echo "SERVICE_ACCOUNT_EMAIL=$SERVICE_ACCOUNT_EMAIL" 
+echo "GITHUB_USER=$YOUR_GITHUB_USER" 
+echo "REPO=$YOUR_REPO" 
+ 
+ 
+3.3 Expected Output for the echo commands 
+your-gcp-project-id 
+your-gcp-project-number 
+Updated property [core/project]. 
+  
+3.4 Validate the response of the code ran 
+gcloud config get-value project 
+ 
+Important 
+Cloud Shell loses variables when the session resets (e.g. after closing the browser). If you return later and 
+variables are blank, run the PROJECT_ID and PROJECT_NUMBER assignments again before continuing. 
+  
+4. Phase 2 — Enable Required APIs 
+4.1 Objective 
+GCP services are disabled by default. You must explicitly enable the three services this pipeline depends on. 
+  
+Memory trick — CIA: 
+• C = Container (Google Kubernetes Engine) 
+• I = IAM Credentials (for Workload Identity Federation) 
+• A = Artifact Registry (for storing Docker images) 
+4.2 One-time command to enable APIs 
+gcloud services enable \ 
+container.googleapis.com \ 
+artifactregistry.googleapis.com \ 
+iamcredentials.googleapis.com 
+4.2 Command to check that the APIs are enabled  
+gcloud services list --enabled 
+5. Phase 3 — Create Kubernetes Cluster 
+5.1 Objective 
+Provision the group of virtual machines (nodes) that will run your application. Think of the cluster as the 
+factory — it contains the machines, and your app runs as a worker inside it. 
+5.2 Command 
+Option 1: Create a new cluster using the auto mode - This can take up to 10 minutes to 
+complete. This always works 
+# checking the start time with the command date ; 
+date; 
+# command to create a k8s cluster 
+gcloud container clusters create-auto backstage-cluster --region $REGION 
+# checking the end time with the command date ; 
+date; 
+ 
+# command to get credentials of the cluster 
+gcloud container clusters get-credentials backstage-cluster --region  $REGION 
+ 
+# verify the kubectl context is correctly set  
+kubectl cluster-info 
+  
+Option 2  
+For this region, you can have a different region based on what you picked previously, eg (us -east1, us-west1) 
+gcloud container clusters create backstage-cluster \ 
+  --region $REGION \ 
+  --num-nodes 2 \ 
+  --disk-type pd-standard \ 
+  --disk-size 50 
+  
+5.3 Validate 
+gcloud container clusters list 
+You should see STATUS: RUNNING in the output. 
+  
+5.4 Errors Encountered and Fixes 
+  
+Error 1 — SSD_TOTAL_GB Quota Exceeded 
+GCP free/new accounts have a 500GB SSD limit per region. The default cluster uses 100GB SSD per node. 
+With 6 nodes this exceeds the limit.  Fix: Use --disk-type pd-standard (HDD) and --disk-size 50 to stay 
+within quota. Also switch to a different region (us-east1) if quota is exhausted in your original region 
+(us-west1). 
+  
+Error 2 — Already Exists (code 409) 
+If you press Ctrl+C during cluster creation, the cluster name gets registered even though creation failed. 
+Running create again gives a 409 Already Exists error.  Fix: Delete the broken cluster first, wait for full 
+deletion, then recreate.  gcloud container clusters delete backstage-cluster --region us-east1 
+  
+Error 3 — Cannot Delete While Provisioning 
+If the cluster is in PROVISIONING status, GCP will not allow deletion. You get a 400 incompatible 
+operation error. Fix: Wait for the cluster to finish provisioning (check with gcloud container clusters list), 
+then delete. 
+Warning — Ctrl+C 
+Never press Ctrl+C during cluster creation or deletion. These operations take 3-5 minutes. Just wait. 
+Interrupting them leaves resources in a broken state that is difficult to clean up. 
+6. Phase 4 — Kubernetes Configuration Files 
+6.1 Objective 
+Define how your application runs inside Kubernetes. Three files are required, stored in a k8s/ folder at the root 
+of your repository. 
+Memory trick — DNS: 
+• D = Deployment (tells Kubernetes how to run your app) 
+• N = Namespace (isolates your app from other things in the cluster) 
+• S = Service (exposes your app with a public IP) 
+6.2 File Structure 
+your-repo/ 
+k8s/ 
+namespace.yaml 
+deployment.yaml 
+service.yaml 
+6.3 namespace.yaml 
+apiVersion: v1 
+kind: Namespace 
+metadata: 
+name: backstage 
+ 
+6.4 deployment.yaml 
+ 
+apiVersion: apps/v1 
+kind: Deployment 
+metadata: 
+  name: backstage 
+  namespace: backstage 
+spec: 
+  replicas: 1 
+  selector: 
+    matchLabels: 
+      app: backstage 
+  template: 
+    metadata: 
+      labels: 
+        app: backstage 
+    spec: 
+      containers: 
+        - name: backstage 
+          image: nginx 
+          ports: 
+            - containerPort: 7007 
+  
+Note — nginx Placeholder 
+The image: nginx is a placeholder. The real image gets injected by the CI/CD pipeline using kubectl set 
+image on every deployment. You never need to manually update this value. 
+  
+6.5 service.yaml 
+apiVersion: v1 
+kind: Service 
+metadata: 
+  name: backstage 
+  namespace: backstage 
+spec: 
+  type: LoadBalancer 
+  selector: 
+    app: backstage 
+ports: - port: 80 
+targetPort: 7007 
+6.6 Errors Encountered and Fixes 
+Error — Files Were Empty (0 bytes) 
+The k8s/ folder existed on GitHub, but all three YAML files showed 0 bytes. This caused: error: no objects 
+passed to apply. Cause: Files were created without content being saved inside them. Fix: Open each file 
+in VS Code, paste the correct YAML content, press Ctrl+S to save, then git add k8s/ and git push. 
+Error — Namespace Not Found During Apply 
+When applying the whole k8s/ folder at once, Kubernetes sometimes tries to create the Deployment 
+before the Namespace is ready. Fix: Apply files individually in order: namespace first, then deployment, 
+then service. 
+With this setup, when you push your code to GitHub or GitLab, the deployment will fail because some CI/CD 
+dependencies need to be completed in GCP. 
+7. Phase 5 — Artefact Registry 
+7.1 Objective 
+Create a private Docker image repository on GCP. This is where your CI/CD pipeline pushes the built image, 
+and where Kubernetes pulls it from when deploying. 
+Ensure your region and project ID values are set in the terminal session using this commands 
+REGION=[the-region-where-your-cluster-is-created-in-i-recommend-europe-west2-if-close-to-europe] 
+PROJECT_ID=[your-project-id] 
+E.g 
+REGION=europe-west2 
+PROJECT_ID=project-9b8c91d6-b01a-4731-a77 
+7.2 Create the Repository 
+gcloud artifacts repositories create backstage-ayo \ 
+  --repository-format=docker \ 
+  --location=$REGION \ 
+  --project=$PROJECT_ID 
+  --description="Docker repo for backstage" 
+  
+7.3 Give the Cluster Permission to Pull Images 
+gcloud projects add-iam-policy-binding $PROJECT_ID \ 
+  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \ 
+  --role="roles/artifactregistry.reader" 
+  
+Why This Is Required 
+Kubernetes runs as a service account that has no permissions by default. Without explicitly granting 
+artifactregistry. reader to the compute service account, pods will fail to start with an ImagePullBackOff 
+error. 
+  
+7.4 Errors Encountered and Fixes 
+Error — Underscores Not Allowed in Repository Names 
+The original repo name backstage_ayo used an underscore. Artifact Registry only allows lowercase 
+letters, numbers, and hyphens.  Fix: Use backstage-ayo (hyphen instead of underscore). Also update the 
+REPO variable in your GitHub Actions YAML to match. 
+  
+ 
+  
+8. Phase 6 — Workload Identity Federation 
+8.1 Objective 
+Set up secure authentication between GitHub Actions and GCP without storing any secret keys. This is the 
+production-safe approach. 
+Steps 
+1. Create a service account 
+2. Give permissions to the service account 
+3. Create a Workload Identity Pool 
+4. Create an OIDC GitHub Provider, aka A workload identity pool provider  
+5. Add IAM policy bindings to the service account created in step 2 
+  
+8.2 Why Not Just Use a JSON Key? 
+Comparison Detail 
+Old method (JSON key) Modern method -Workload Identity Federation (WIF) 
+Long-lived secret that never expires Temporary token that expires after each use 
+Can leak if GitHub repo is compromised Nothing to leak — no key is ever stored 
+Manual rotation required Fully automatic — no maintenance needed 
+Not production safe Industry best practice 
+ 
+8.3 Step 1 — Create a Service Account 
+gcloud iam service-accounts create github-deployer 
+  
+SERVICE_ACCOUNT_EMAIL=github-deployer@$PROJECT_ID.iam.gserviceaccount.com 
+  
+echo $SERVICE_ACCOUNT_EMAIL 
+  
+8.4 Step 2 — Grant Permissions to the Service Account 
+# Artifact Registry Admin 
+gcloud projects add-iam-policy-binding $PROJECT_ID \ 
+  --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \ 
+  --role="roles/artifactregistry.admin" 
+  
+# Kubernetes Engine Admin 
+gcloud projects add-iam-policy-binding $PROJECT_ID \ 
+  --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \ 
+  --role="roles/container.admin" 
+  
+# Storage Admin 
+gcloud projects add-iam-policy-binding $PROJECT_ID \ 
+  --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \ 
+  --role="roles/storage.admin" 
+  
+8.5 Step 3 — Create Workload Identity Pool 
+gcloud iam workload-identity-pools create github-pool \ 
+  --location="global" \ 
+  --project=$PROJECT_ID 
+  
+POOL_ID=github-pool 
+  
+8.6 Step 4 — Create GitHub OIDC Provider 
+Replace YOUR_GITHUB_USERNAME and YOUR_REPO_NAME with your actual values before running: 
+  
+gcloud iam workload-identity-pools providers create-oidc github-provider \ 
+  --location="global" \ 
+  --workload-identity-pool="github-pool" \ 
+  --issuer-uri="https://token.actions.githubusercontent.com" \ 
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \ 
+  --attribute-condition="assertion.repository=='YOUR_GITHUB_USERNAME/YOUR_REPO_NAME'" 
+  
+POOL_PROVIDER=github-provider 
+  
+8.7 Step 5 — Bind GitHub Repo to Service Account 
+Replace YOUR_GITHUB_USER and YOUR_REPO with your actual values: 
+  
+# Ensure the following values are set your own values for example   
+ 
+export PROJECT_ID="project-9b8c91d6-b01a-4731-a77" 
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)') 
+export SERVICE_ACCOUNT_EMAIL="github-deployer@$PROJECT_ID.iam.gserviceaccount.com" 
+export POOL_ID="github-pool" 
+export YOUR_GITHUB_USER="Olumuyiwa" 
+export YOUR_REPO="backstage-crashable" 
+ 
+echo $PROJECT_ID 
+echo $YOUR_REPO 
+echo $YOUR_GITHUB_USER 
+echo $PROJECT_NUMBER 
+echo $SERVICE_ACCOUNT_EMAIL 
+echo $YOUR_GITHUB_USER 
+ 
+  
+# Command to bind policy to Service account  
+ 
+gcloud iam service-accounts add-iam-policy-binding \ 
+  $SERVICE_ACCOUNT_EMAIL \ 
+  --role="roles/iam.workloadIdentityUser" \ --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadI
+dentityPools/$POOL_ID/attribute.repository/$YOUR_GITHUB_USER/$YOUR_REPO" 
+ 
+  
+8.8 Step 6 — Add GitHub Secrets 
+Go to your GitHub repo → Settings → Secrets and variables → Actions → New repository secret. Add each of 
+these: 
+  
+Secret Name Value 
+WIF_PROVIDER projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/githu
+b-pool/providers/github-provider 
+GKE_CLUSTER backstage-cluster 
+GKE_REGION us-east1 
+GCP_SERVICE_ACCOUNT github-deployer@PROJECT_ID.iam.gserviceaccount.com 
+GCP_PROJECT_ID your-project-id 
+GCP_PROJECT_NUMBER your-project-number 
+  
+ 
+  
+9. Phase 7 — CI/CD Pipeline 
+9.1 Objective 
+Create the GitHub Actions workflow file that automates the full build and deploy process on every push to the 
+k8s branch. 
+  
+Memory trick — PBPD: 
+•       P = Push code to GitHub 
+•       B = Build Docker image 
+• P = Push image to Artifact Registry 
+• D = Deploy to Kubernetes 
+9.2 File Location 
+For the CI_CD file name , it can be renamed to anything you want. 
+.github/workflows/cicd_2_gcp_k8s.yml 
+9.3 Full Pipeline YAML 
+Two things a new person must change before using it: 
+Thing 1 — The REPO and IMAGE variables at the top: 
+yamlenv: 
+REPO: backstage-ayo 
+IMAGE: backstage 
+These are your specific values. A new person needs to change: 
+REPO to the name of their Artifact Registry repository 
+IMAGE to whatever they want to call their Docker image 
+Thing 2 — The branch name: 
+yamlon: 
+push: 
+branches: [ "k8s" ] 
+pull_request: 
+branches: [ "k8s" ] 
+If their branch is called something different, they change k8s to their branch name. 
+name: ci-cd to k8s 
+permissions: 
+id-token: write 
+contents: read 
+on: 
+push: 
+branches: [ "k8s" ] 
+pull_request: 
+branches: [ "k8s" ] 
+env: 
+REPO: backstage-ayo 
+IMAGE: backstage 
+jobs: 
+build: 
+runs-on: ubuntu-latest 
+steps: - name: Checkout Code 
+uses: actions/checkout@v4 - name: Set Up Node.js 
+uses: actions/setup-node@v4 
+with: 
+node-version: 24 - name: Install Dependencies 
+run: yarn install - name: Compile TypeScript 
+run: yarn tsc - name: Run Unit Tests 
+run: yarn test:all - name: Build the application 
+run: yarn build:all 
+deploy: 
+runs-on: ubuntu-latest 
+needs: build 
+steps: - name: Checkout Code 
+uses: actions/checkout@v4 - name: Set Up Node.js 
+uses: actions/setup-node@v4 
+with: 
+node-version: 24 - name: Install Dependencies 
+run: yarn install - name: Build the application 
+run: yarn build:all - name: Authenticate to Google Cloud 
+uses: google-github-actions/auth@v2 
+with: 
+workload_identity_provider: ${{ secrets.WIF_PROVIDER }} 
+service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }} - name: Set up gcloud CLI 
+uses: google-github-actions/setup-gcloud@v2 - name: Install GKE auth plugin 
+run: gcloud components install gke-gcloud-auth-plugin --quiet - name: Configure Docker for Artifact Registry 
+run: gcloud auth configure-docker ${{ secrets.GKE_REGION }}-docker.pkg.dev - name: Build Docker image 
+run: | 
+docker build --no-cache \ -t ${{ secrets.GKE_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ 
+env.IMAGE }}:$GITHUB_SHA \ -f packages/backend/Dockerfile . - name: Create Artifact Registry repo if not exists 
+run: | 
+gcloud artifacts repositories describe ${{ env.REPO }} \ --project=${{ secrets.GCP_PROJECT_ID }} \ --location=${{ secrets.GKE_REGION }} || \ 
+gcloud artifacts repositories create ${{ env.REPO }} \ --repository-format=docker \ --location=${{ secrets.GKE_REGION }} \ --project=${{ secrets.GCP_PROJECT_ID }} 
+      - name: Push image to Artifact Registry 
+        run: | 
+          docker push ${{ secrets.GKE_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ 
+env.REPO }}/${{ env.IMAGE }}:$GITHUB_SHA 
+ 
+      - name: Get GKE cluster credentials 
+        run: | 
+          gcloud container clusters get-credentials \ 
+          ${{ secrets.GKE_CLUSTER }} \ 
+          --region ${{ secrets.GKE_REGION }} 
+ 
+      - name: Deploy to Kubernetes 
+        run: | 
+          kubectl apply -f k8s/namespace.yaml 
+          kubectl apply -f k8s/deployment.yaml 
+          kubectl apply -f k8s/service.yaml 
+          kubectl set image deployment/backstage \ 
+          backstage=${{ secrets.GKE_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ 
+env.REPO }}/${{ env.IMAGE }}:${{ github.sha }} \ 
+          -n backstage 
+          kubectl get pods -n backstage 
+ 
+  
+9.4 Errors Encountered and Fixes 
+Error 1 — YAML Indentation (uses: on wrong line) 
+A common mistake is writing 'name' and 'uses' as two separate list items instead of one step.  WRONG: - 
+name: Checkout Code - uses: actions/checkout@v4  CORRECT: - name: Checkout Code   uses: 
+actions/checkout@v4  In YAML, indentation is everything. 'uses' must be indented under 'name', not a 
+new list item. 
+  
+Error 2 — $GITHUB_SHA Not Resolving 
+$GITHUB_SHA used in a shell run step sometimes does not resolve. Use ${{ github.sha }} instead — this is 
+the correct GitHub Actions expression syntax. 
+  
+Error 3 — Artifact Registry Name with Underscore 
+Artifact Registry repo names cannot contain underscores. backstage_ayo fails. Use backstage-ayo 
+(hyphen). This must match in both the YAML env variable and the actual repository created in GCP. 
+  
+ 
+  
+10. Phase 8 — Deploy and Verify 
+10.1 Trigger the Pipeline 
+git add . 
+git commit -m "chore(release): deploy to k8s" 
+git push origin k8s 
+ 
+# If you see an error with the push because you are pushing to a new branch remotely, use this  
+git push --set-upstream origin k8s 
+  
+Then go to your GitHub repo → Actions tab and watch the pipeline run. Both the build and deploy jobs must 
+show green checkmarks. 
+  
+10.2 Reconnect Cloud Shell to Cluster 
+After the pipeline runs, reconnect Cloud Shell to the cluster so you can run kubectl commands: 
+  
+gcloud container clusters get-credentials backstage-cluster \ 
+  --region us-east1 \ 
+  --project $PROJECT_ID 
+  
+10.3 Verify the App is Running 
+# Check pods are running 
+kubectl get pods -n backstage 
+  
+# Check service and get external IP 
+kubectl get services -n backstage 
+  
+# Get the public URL 
+EXTERNAL_IP=$(kubectl get svc -n backstage backstage -o 
+jsonpath='{.status.loadBalancer.ingress[0].ip}') 
+echo http://$EXTERNAL_IP 
+  
+Open the URL in your browser. Navigate to /catalog to see the Backstage UI. 
+  
+10.4 Errors Encountered and Fixes 
+ 
+Note: After the 1st successful deployment to k8s, the Backstage external service endpoint will not lauch 
+the application until all the localhost entries in app-config.yaml and app-config.production.yaml are replaced 
+with the  service’s external IP address 
+To get the  service’s external IP address, run this kubectl command  
+ 
+kubectl get service backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 
+ 
+Replacements  
+ 
+Default After the change 
+cors: origin: http://localhost:7007 cors: origin: http://34.105.132.25   
+app: baseUrl: http://localhost:7007 app: baseUrl: http://34.105.132.25   
+backend: baseUrl: http://localhost:7007 backend: baseUrl: http://34.105.132.25  
+ 
+ 
+ 
+Error 1 — Database Connection Refused (port 5432) 
+Backstage tried to connect to PostgreSQL on localhost:5432 but no database existed. This is because 
+app-config.production.yaml had client: pg configured.  Fix: Change app-config.production.yaml to use 
+SQLite in-memory for now:  database:   client: better-sqlite3   connection: ':memory:'  Note: This is a 
+workaround. For production, a real PostgreSQL database should be provisioned. 
+  
+Error 2 — Content Security Policy Blocking eval() 
+The browser console showed CSP blocking eval(), which prevented Backstage's frontend JavaScript from 
+running.  Fix: Add script-src with unsafe-eval to the csp section in app-config.yaml:  csp:   connect-src: 
+["'self'", 'http:', 'https:']   script-src: ["'self'", "'unsafe-eval'"]   img-src: ["'self'", 'data:'] 
+  
+Error 3 — White Blank Screen 
+The Backstage frontend loaded but showed a completely white screen. This was caused by cors.origin in 
+app-config.yaml still pointing to http://localhost:3000 instead of the real external IP.  Fix: Update 
+cors.origin, app.baseUrl, and backend.baseUrl in both app-config.yaml and app-config.production.yaml 
+to use the real external IP. 
+Error 4 —Cached error messages 
+The Backstage frontendis still not loading due to caching 
+Solution: Try use another browser to test the url. 
+11. Final App Configuration 
+11.1 app-config.yaml 
+app: 
+title: Scaffolded Backstage App 
+baseUrl: http://YOUR_EXTERNAL_IP 
+organization: 
+name: My Company 
+backend: 
+baseUrl: http://YOUR_EXTERNAL_IP 
+listen: 
+port: 7007 
+host: 0.0.0.0 
+csp: 
+connect-src: ["'self'", 'http:', 'https:'] 
+script-src: ["'self'", "'unsafe-eval'"] 
+img-src: ["'self'", 'data:'] 
+cors: 
+origin: http://YOUR_EXTERNAL_IP 
+methods: [GET, HEAD, PATCH, POST, PUT, DELETE] 
+credentials: true 
+database: 
+client: better-sqlite3 
+connection: ':memory:' 
+11.2 app-config.production.yaml 
+app: 
+  baseUrl: http://YOUR_EXTERNAL_IP 
+  
+backend: 
+  baseUrl: http://YOUR_EXTERNAL_IP 
+  listen: ':7007' 
+  database: 
+ client: better-sqlite3 
+ connection: ':memory:' 
+  
+auth: 
+  providers: 
+ guest: {} 
+  
+catalog: 
+  locations: 
+ - type: file 
+   target: ./examples/entities.yaml 
+ - type: file 
+   target: ./examples/template/template.yaml 
+   rules: 
+     - allow: [Template] 
+ - type: file 
+   target: ./examples/org.yaml 
+   rules: 
+     - allow: [User, Group] 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 12. Managing the Deployment 
+12.1 How to Come Back After a Break 
+When you return and Cloud Shell has reset, run these to reconnect: 
+  
+# Reset your project variables 
+PROJECT_ID="project-8c6db6f9-8c07-4ca7-934" 
+PROJECT_NUMBER="40968610458" 
+  
+# Reconnect to the cluster 
+gcloud container clusters get-credentials backstage-cluster \ 
+  --region us-east1 \ 
+  --project $PROJECT_ID 
+  
+# Check everything is running 
+kubectl get pods -n backstage 
+kubectl get services -n backstage 
+  
+12.2 How to Restart the App 
+kubectl rollout restart deployment/backstage -n backstage 
+  
+12.3 How to Check Logs 
+kubectl logs -n backstage deployment/backstage --tail=50 
+  
+12.4 Shutdown Options 
+Action Command 
+Scale to zero (pause app, keep cluster) kubectl scale deployment backstage --replicas=0 -n 
+backstage 
+Resume from zero kubectl scale deployment backstage --replicas=1 -n 
+backstage 
+Delete cluster (save most money) gcloud container clusters delete backstage-cluster --region us-east1 
+Recreate cluster gcloud container clusters create backstage-cluster --region us-east1 --num-nodes 2 --disk-type 
+pd-standard --disk-size 50 
+Redeploy after recreation git commit --allow-empty -m 'redeploy' && git push 
+origin k8s 
+  
+Cost Warning 
+A GKE cluster with multiple nodes running 24/7 costs real money. Scale to zero replicas when not actively 
+using the app. Delete the cluster entirely when taking breaks of more than a few days. Your code and 
+Docker images remain safe on GitHub and Artifact Registry. 
+  
+ 
+  
+13. Troubleshooting Guide 
+Problem Fix 
+kubectl returns connection refused to 
+localhost:8080 
+Cloud Shell session reset. Run: gcloud container 
+clusters get-credentials backstage-cluster --region 
+us-east1 
+Pod shows ImagePullBackOff Cluster cannot pull the Docker image. Check 
+Artifact Registry reader permission was granted to 
+the compute service account. 
+EXTERNAL-IP shows as pending Wait 1-3 minutes. GCP is provisioning the load 
+balancer. Keep running kubectl get services -n 
+backstage. 
+GitHub Actions fails: no objects passed to apply The k8s/ YAML files are empty (0 bytes). Open each 
+in VS Code, paste the content, save with Ctrl+S, and 
+push. 
+GitHub Actions fails: Already exists (409) A previous interrupted run registered the resource. 
+Delete it first, wait for full deletion, then recreate. 
+App shows white blank screen Check browser console (F12). Usually cors.origin or 
+baseUrl is still set to localhost. Update to your 
+external IP. 
+Database connection refused on port 5432 app-config.production.yaml has client: pg 
+configured. Change to client: better-sqlite3 with 
+connection: ':memory:'. 
+CSP blocking eval() Add script-src: ["'self'", "'unsafe-eval'"] to the csp 
+section in app-config.yaml. 
+Quota exceeded for SSD_TOTAL_GB 
+14. Final Summary 
+14.1 What You Built 
+Use --disk-type pd-standard and --disk-size 50 when 
+creating the cluster. Switch regions if needed. 
+A fully automated CI/CD pipeline that deploys a Backstage application to Google Kubernetes Engine using 
+industry best practices including Workload Identity Federation for secure authentication and Kubernetes for 
+resilient container orchestration. 
+14.2 The Full Memory Hook 
+CIA → Enable APIs (Container, IAM, Artifact Registry) 
+DNS → K8s objects (Deployment, Namespace, Service) 
+PBPD → Pipeline (Push, Build, Push image, Deploy) 
+URL → Access the live app 
+14.3 Key Principles Learned 
+• Never store JSON service account keys in GitHub — use Workload Identity Federation 
+• YAML indentation is critical — one wrong space breaks the entire pipeline 
+• Real deployments always hit errors — reading error messages carefully is the skill 
+• Kubernetes does not run your code directly — it runs Docker images 
+• Cloud Shell loses variables on session reset — always re-export them when returning 
+• GCP quota limits are real — use HDD disks and smaller sizes for learning projects 

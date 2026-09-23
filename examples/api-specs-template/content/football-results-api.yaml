@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: Football Results API
+  description: API for football fixtures, scores, teams and standings
+  version: 1.0.0
+
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /fixtures:
+    get:
+      summary: List fixtures
+      operationId: listFixtures
+      tags: [Fixtures]
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: league
+          in: query
+          schema:
+            type: string
+        - name: season
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of fixtures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fixture'
+
+  /fixtures/{id}:
+    get:
+      summary: Get fixture by ID
+      operationId: getFixture
+      tags: [Fixtures]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fixture details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fixture'
+        '404':
+          description: Fixture not found
+
+  /teams:
+    get:
+      summary: List teams
+      operationId: listTeams
+      tags: [Teams]
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+
+  /teams/{id}:
+    get:
+      summary: Get team by ID
+      operationId: getTeam
+      tags: [Teams]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: Team not found
+
+  /standings:
+    get:
+      summary: Get league standings
+      operationId: getStandings
+      tags: [Standings]
+      parameters:
+        - name: league
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: season
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: League standings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Standing'
+
+components:
+  schemas:
+    Fixture:
+      type: object
+      properties:
+        id:
+          type: string
+        homeTeam:
+          $ref: '#/components/schemas/Team'
+        awayTeam:
+          $ref: '#/components/schemas/Team'
+        homeScore:
+          type: integer
+        awayScore:
+          type: integer
+        status:
+          type: string
+          enum: [scheduled, live, finished, postponed]
+        kickoff:
+          type: string
+          format: date-time
+        league:
+          type: string
+        season:
+          type: integer
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        logo:
+          type: string
+        league:
+          type: string
+        country:
+          type: string
+    Standing:
+      type: object
+      properties:
+        position:
+          type: integer
+        team:
+          $ref: '#/components/schemas/Team'
+        played:
+          type: integer
+        won:
+          type: integer
+        drawn:
+          type: integer
+        lost:
+          type: integer
+        goalsFor:
+          type: integer
+        goalsAgainst:
+          type: integer
+        points:
+          type: integer

@@ -1,0 +1,27 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: products-api
+  description: CRUD API for managing products
+  annotations:
+    github.com/project-slug: Egregiuss/backstage-api-specs
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: user:guest
+  definition:
+    $text: ./products-api.yaml
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: football-results-api
+  description: API for football fixtures, scores, teams and standings
+  annotations:
+    github.com/project-slug: Egregiuss/backstage-api-specs
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: user:guest
+  definition:
+    $text: ./football-results-api.yaml
