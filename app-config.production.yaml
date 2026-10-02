@@ -30,6 +30,14 @@ auth:
   providers:
     guest:
       dangerouslyAllowOutsideDevelopment: true
+    github:
+      development:
+        clientId: ${GITHUB_OAUTH_CLIENT_ID}
+        clientSecret: ${GITHUB_OAUTH_CLIENT_SECRET}
+        signIn:
+          resolvers:
+            - resolver: usernameMatchingUserEntityName
+              dangerouslyAllowSignInWithoutUserInCatalog: true
 
 catalog:
   locations:
