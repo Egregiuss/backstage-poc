@@ -59,6 +59,16 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: POSTGRES_PASSWORD
+            - name: GITHUB_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GITHUB_OAUTH_CLIENT_ID
+            - name: GITHUB_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GITHUB_OAUTH_CLIENT_SECRET
           resources:
             requests:
               cpu: 250m
