@@ -1,0 +1,40 @@
+name: Deploy Backstage to Cloud Run
+
+on:
+  push:
+    branches:
+      - feature/cloud-run-deploy
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: Egregiuss/central_pipelines/.github/workflows/node-ci.yml@main
+    with:
+      node-version: '24'
+
+  security-scan:
+    needs: ci
+    uses: Egregiuss/central_pipelines/.github/workflows/security-scan.yml@main
+    with:
+      language: node
+      node-version: '24'
+
+  deploy:
+    needs: [ci, security-scan]
+    if: github.ref == 'refs/heads/feature/cloud-run-deploy' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+    uses: Egregiuss/central_pipelines/.github/workflows/node-deploy-cloud-run.yml@main
+    with:
+      node-version: '24'
+      gar-repository: backstage
+      image-name: backstage
+      dockerfile: packages/backend/Dockerfile
+      cloud-run-port: 7007
+    secrets:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      CLOUD_RUN_SERVICE: ${{ secrets.CLOUD_RUN_SERVICE }}
