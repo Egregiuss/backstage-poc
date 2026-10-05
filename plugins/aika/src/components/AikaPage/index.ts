@@ -1,0 +1,1 @@
+export { AikaPage } from './AikaPage';

@@ -158,7 +158,10 @@ permission:
   # setting this to `false` will disable permissions
   enabled: true
 
-# see https://backstage.io/docs/ai/mcp-actions for more details
+aika:
+  model: gpt-4o
+  openaiApiKey: ${OPENAI_API_KEY}
+
 mcpActions:
   name: 'My Company Backstage' # defaults to "backstage"
   description: 'Tools for managing your software catalog, creating new services from templates, and exploring your developer portal' # optional

@@ -64,4 +64,8 @@ backend.add(import('@backstage/plugin-signals-backend'));
 // mcp actions plugin
 backend.add(import('@backstage/plugin-mcp-actions-backend'));
 
+// aika plugin
+backend.add(import('@internal/backstage-plugin-aika-backend'));
+
+backend.add(import('@internal/backstage-plugin-aika-backend'));
 backend.start();
